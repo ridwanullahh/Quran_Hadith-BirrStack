@@ -1,0 +1,151 @@
+name: Build APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-34 build-tools;34.0.0'
+      - run: npm install
+      - name: Build web app (single file for APK)
+        run: npx vite build --config vite.config.apk.ts
+      - name: Prepare Android project
+        run: |
+          mkdir -p android/app/src/main/java/com/birrstack/quranhadith
+          mkdir -p android/app/src/main/assets/www
+          mkdir -p android/app/src/main/res/values
+          cp dist-apk/index.html android/app/src/main/assets/www/index.html
+
+          cat > android/app/src/main/AndroidManifest.xml << 'X'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application android:label="Quran Hadith" android:icon="@android:drawable/ic_dialog_info" android:theme="@android:style/Theme.Material.NoActionBar" android:usesCleartextTraffic="true">
+                  <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+              <uses-permission android:name="android.permission.INTERNET" />
+          </manifest>
+          X
+
+          cat > android/app/src/main/java/com/birrstack/quranhadith/MainActivity.java << 'X'
+          package com.birrstack.quranhadith;
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.webkit.WebSettings;
+          public class MainActivity extends Activity {
+              private WebView webView;
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  webView = new WebView(this);
+                  setContentView(webView);
+                  WebSettings s = webView.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setAllowFileAccess(true);
+                  s.setAllowContentAccess(true);
+                  s.setMediaPlaybackRequiresUserGesture(false);
+                  s.setAllowFileAccessFromFileURLs(true);
+                  s.setAllowUniversalAccessFromFileURLs(true);
+                  webView.setWebViewClient(new WebViewClient());
+                  webView.loadUrl("file:///android_asset/www/index.html");
+              }
+              @Override
+              public void onBackPressed() {
+                  if (webView.canGoBack()) webView.goBack();
+                  else super.onBackPressed();
+              }
+          }
+          X
+
+          cat > android/settings.gradle << 'X'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS); repositories { google(); mavenCentral() } }
+          include ':app'
+          rootProject.name = "QuranHadith"
+          X
+
+          cat > android/build.gradle << 'X'
+          plugins { id 'com.android.application' version '8.1.0' apply false }
+          X
+
+          cat > android/app/build.gradle << 'X'
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.birrstack.quranhadith'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.birrstack.quranhadith"
+                  minSdk 21
+                  targetSdk 34
+                  versionCode 5
+                  versionName "0.0.2"
+              }
+              signingConfigs {
+                  release {
+                      storeFile file('../birrstack-release.keystore')
+                      storePassword 'birrstack123'
+                      keyAlias 'birrstack'
+                      keyPassword 'birrstack123'
+                  }
+              }
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+          dependencies { implementation 'androidx.webkit:webkit:1.10.0' }
+          X
+
+          cat > android/gradle.properties << 'X'
+          android.useAndroidX=true
+          android.enableJetifier=true
+          org.gradle.jvmargs=-Xmx2048m
+          X
+
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+          keytool -genkeypair -v -keystore android/birrstack-release.keystore -alias birrstack -keyalg RSA -keysize 2048 -validity 10000 -storepass birrstack123 -keypass birrstack123 -dname "CN=BirrStack, OU=Dev, O=BirrStack, L=Lagos, C=NG"
+      - uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: '8.1'
+          build-root-directory: android
+      - name: Build APK
+        working-directory: android
+        run: gradle assembleRelease --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quran-hadith-apk
+          path: android/app/build/outputs/apk/release/*.apk
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: android/app/build/outputs/apk/release/*.apk
+          name: "Quran Hadith ${{ github.ref_name }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

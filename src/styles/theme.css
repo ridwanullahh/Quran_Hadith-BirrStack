@@ -1,0 +1,40 @@
+/* Qur'an & Hadith — global theme tokens (Mushaf palette).
+   BismiLLAH Ar-Rahman Ar-Raheem. */
+:root {
+  --qh-bg: #FAF7F0;
+  --qh-card: #FFFFFF;
+  --qh-ink: #1F2A20;
+  --qh-muted: #6B7A6E;
+  --qh-line: #E4DFD3;
+  --qh-green: #0E7A46;
+  --qh-green-deep: #0A5C36;
+  --qh-green-soft: #E7F4EC;
+  --qh-gold: #C9A227;
+  --qh-gold-deep: #9A7B1C;
+  --qh-mushaf-paper: #FDFBF3;
+  --qh-mushaf-frame: #F3ECD5;
+  --qh-mushaf-ink: #12351F;
+  --qh-mushaf-mark: #9A7B1C;
+}
+
+[data-theme="dark"] {
+  --qh-bg: #101811;
+  --qh-card: #18241A;
+  --qh-ink: #E7EFE8;
+  --qh-muted: #93A697;
+  --qh-line: #263528;
+  --qh-green: #2FAE6E;
+  --qh-green-deep: #6FD79F;
+  --qh-green-soft: #17281D;
+  --qh-gold: #D8B84A;
+  --qh-gold-deep: #D8B84A;
+  --qh-mushaf-paper: #142015;
+  --qh-mushaf-frame: #23331F;
+  --qh-mushaf-ink: #DCE8DC;
+  --qh-mushaf-mark: #D8B84A;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--qh-bg); color: var(--qh-ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: inherit; }

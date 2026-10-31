@@ -1,0 +1,113 @@
+<template>
+  <div class="qh-page">
+    <header class="qh-header">
+      <div class="qh-header-inner">
+        <a class="qh-brand" href="/">
+          <span class="qh-brand-mark">۞</span>
+          <span class="qh-brand-text">Qur'an & Hadith</span>
+        </a>
+        <nav class="qh-nav" aria-label="Primary">
+          <a href="/">Qur'an</a>
+          <a href="/hadith/" birr:class="{ active: isIndex }">Hadith</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="qh-main">
+      <nav class="qh-crumb" aria-label="Hadith navigation">
+        <a href="/hadith/">All collections</a>
+        <span birr:if="!isIndex">· {{ collectionName }}</span>
+      </nav>
+
+      <header class="qh-surah-head">
+        <p class="qh-surah-kicker" birr:if="!isIndex">{{ count }} narrations</p>
+        <h1 class="qh-surah-name-en" birr:if="!isIndex" style="font-size:34px">{{ collectionName }}</h1>
+        <h1 class="qh-surah-name-en" birr:if="isIndex" style="font-size:34px">The Hadith Collections</h1>
+      </header>
+
+      <section birr:if="isIndex" class="qh-grid">
+        <a birr:for="(c, i) in collections" birr:key="c.key" class="qh-card" href="{{ '/hadith/' + c.key + '/' }}">
+          <span class="qh-card-body">
+            <span class="qh-card-name-en">{{ c.name }}</span>
+            <span class="qh-card-meta">{{ c.count }} hadiths</span>
+          </span>
+        </a>
+      </section>
+
+      <section birr:if="!isIndex">
+        <div class="qh-hadith-list" id="qh-hadith-list">
+          <article birr:for="(hd, i) in hadiths" birr:key="hd.number" class="qh-hadith">
+            <div class="qh-hadith-num">№ {{ hd.number }}<span birr:if="hd.grade"> · {{ hd.grade }}</span></div>
+            <p class="qh-hadith-ar" dir="rtl" lang="ar">{{ hd.arabic }}</p>
+            <p class="qh-hadith-en" dir="ltr" birr:if="hd.english">{{ hd.english }}</p>
+            <p class="qh-hadith-narrator" birr:if="hd.narrator">— {{ hd.narrator }}</p>
+          </article>
+        </div>
+        <div class="qh-load-wrap">
+          <p class="qh-empty" birr:if="exhausted">The complete collection is rendered on this page.</p>
+          <button birr:if="!exhausted" class="qh-tool" id="qh-load-more" type="button" birr:on:click="loadMore">Load more (offline, from the bundled archive)</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="qh-footer">
+      <p>Open public hadith collections · pre-rendered and fully offline.</p>
+    </footer>
+  </div>
+</template>
+<script>
+import { signal } from 'birrstack-core';
+
+export default {
+  setup(ctx) {
+    const props = (ctx && ctx.props) || {};
+    const isIndex = signal(props.isIndex === true);
+    const hadiths = signal(Array.isArray(props.hadiths) ? props.hadiths : []);
+    const exhausted = signal(props.isIndex === true || hadiths.value.length >= (Number(props.count) || 0));
+    const PAGE = 50;
+
+    async function loadMore() {
+      try {
+        const resp = await fetch(`/hadith-full/${props.collectionKey}.json.gz`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const ds = new DecompressionStream('gzip');
+        const stream = resp.body.pipeThrough(ds);
+        const text = await new Response(stream).text();
+        const file = JSON.parse(text);
+        const cols = Object.fromEntries((file.columns || []).map((c) => [c.name, c.data]));
+        const current = hadiths.value.length;
+        const rows = [];
+        for (let i = current; i < Math.min(file.length, current + PAGE); i++) {
+          rows.push({
+            number: cols.number ? cols.number[i] : i + 1,
+            arabic: cols.arabic ? cols.arabic[i] : '',
+            english: cols.english ? cols.english[i] : '',
+            narrator: cols.narrator ? cols.narrator[i] : undefined,
+            grade: cols.grade ? cols.grade[i] : undefined,
+          });
+        }
+        hadiths.value = [...hadiths.value, ...rows];
+        exhausted.value = hadiths.value.length >= file.length;
+      } catch (e) {
+        exhausted.value = true;
+      }
+    }
+
+    return {
+      isIndex, hadiths, exhausted, loadMore,
+      collectionKey: String(props.collectionKey ?? ''),
+      collectionName: String(props.collectionName ?? ''),
+      count: Number(props.count) || 0,
+      collections: Array.isArray(props.collections) ? props.collections : [],
+    };
+  },
+};
+</script>
+<style>
+.qh-hadith { background: var(--qh-card); border: 1px solid var(--qh-line); border-radius: 16px; padding: 20px 22px; margin-bottom: 14px; }
+.qh-hadith-num { font-size: 12.5px; font-weight: 800; color: var(--qh-green-deep); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 10px; }
+.qh-hadith-ar { font-family: "Amiri", "Scheherazade New", serif; font-size: 24px; line-height: 2; margin: 0 0 10px; text-align: right; }
+.qh-hadith-en { font-size: 15px; line-height: 1.7; margin: 0 0 6px; }
+.qh-hadith-narrator { color: var(--qh-muted); font-size: 13.5px; font-style: italic; margin: 0; }
+.qh-load-wrap { text-align: center; padding: 18px 0 30px; }
+</style>

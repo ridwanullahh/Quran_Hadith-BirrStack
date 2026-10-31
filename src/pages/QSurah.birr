@@ -1,0 +1,104 @@
+<template>
+  <div class="qh-page">
+    <header class="qh-header">
+      <div class="qh-header-inner">
+        <a class="qh-brand" href="/">
+          <span class="qh-brand-mark">۞</span>
+          <span class="qh-brand-text">Qur'an & Hadith</span>
+        </a>
+        <nav class="qh-nav" aria-label="Primary">
+          <a href="/">Qur'an</a>
+          <a href="/hadith/">Hadith</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="qh-main qh-surah-main">
+      <nav class="qh-crumb" aria-label="Surah navigation">
+        <a href="/">All surahs</a>
+        <span birr:if="prev">← <a href="{{ '/surah/' + prev + '/' }}">Surah {{ prev }}</a></span>
+        <span birr:if="next"><a href="{{ '/surah/' + next + '/' }}">Surah {{ next }}</a> →</span>
+      </nav>
+
+      <header class="qh-surah-head">
+        <p class="qh-surah-kicker">Surah {{ number }} · {{ type }} · {{ totalVerses }} ayahs</p>
+        <h1 class="qh-surah-name-ar">{{ name }}</h1>
+        <p class="qh-surah-name-en">{{ transliteration }}</p>
+      </header>
+
+      <div class="qh-reader-tools" id="qh-tools">
+        <button class="qh-tool" id="qh-mushaf-toggle" type="button" aria-pressed="false">Mushaf mode</button>
+        <button class="qh-tool" id="qh-font-dec" type="button" aria-label="Decrease Arabic font size">A−</button>
+        <button class="qh-tool" id="qh-font-inc" type="button" aria-label="Increase Arabic font size">A+</button>
+      </div>
+
+      <article class="qh-mushaf" id="qh-ayahs" dir="rtl">
+        <div birr:for="(a, i) in ayahs" birr:key="a.number" class="qh-ayah">
+          <p class="qh-ayah-ar" dir="rtl" lang="ar">{{ a.arabic }} <span class="qh-ayah-mark">﴿{{ toArabicNum(a.number) }}﴾</span></p>
+          <p class="qh-ayah-tr" birr:if="a.translation" dir="ltr">{{ a.translation }}</p>
+          <p class="qh-ayah-tl" birr:if="a.transliteration" dir="ltr">{{ a.transliteration }}</p>
+        </div>
+      </article>
+
+      <nav class="qh-crumb qh-crumb-bottom" aria-label="Surah navigation bottom">
+        <span birr:if="prev">← <a href="{{ '/surah/' + prev + '/' }}">Surah {{ prev }}</a></span>
+        <a href="/">All surahs</a>
+        <span birr:if="next"><a href="{{ '/surah/' + next + '/' }}">Surah {{ next }}</a> →</span>
+      </nav>
+    </main>
+
+    <footer class="qh-footer">
+      <p>Qur'an text: Tanzil Uthmani · Translation: Saheeh International. Pre-rendered — reads fully offline.</p>
+    </footer>
+  </div>
+</template>
+<script>
+export default {
+  setup(ctx) {
+    const props = (ctx && ctx.props) || {};
+    const number = Number(props.number) || 1;
+    const prev = number > 1 ? number - 1 : 0;
+    const next = number < 114 ? number + 1 : 0;
+    const AR_DIGITS = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+    function toArabicNum(n) {
+      return String(n).split('').map((d) => AR_DIGITS[Number(d)] ?? d).join('');
+    }
+    return {
+      number, prev, next, toArabicNum,
+      name: String(props.name ?? ''),
+      transliteration: String(props.transliteration ?? ''),
+      type: String(props.type ?? ''),
+      totalVerses: Number(props.totalVerses) || 0,
+      ayahs: Array.isArray(props.ayahs) ? props.ayahs : [],
+    };
+  },
+};
+</script>
+<style>
+.qh-surah-main { max-width: 860px; }
+.qh-crumb { display: flex; gap: 14px; align-items: center; font-size: 14px; margin-bottom: 18px; color: var(--qh-muted); }
+.qh-crumb a { color: var(--qh-green-deep); text-decoration: none; font-weight: 600; }
+.qh-crumb-bottom { justify-content: space-between; margin-top: 34px; }
+.qh-surah-head { text-align: center; padding: 18px 0 26px; border-bottom: 1px solid var(--qh-line); margin-bottom: 20px; }
+.qh-surah-kicker { color: var(--qh-muted); font-size: 13px; letter-spacing: 1px; text-transform: uppercase; margin: 0 0 8px; }
+.qh-surah-name-ar { font-family: "Amiri", "Scheherazade New", serif; font-size: 44px; margin: 0 0 4px; color: var(--qh-green-deep); }
+.qh-surah-name-en { font-size: 18px; font-weight: 700; margin: 0; }
+.qh-reader-tools { display: flex; gap: 8px; justify-content: center; margin-bottom: 22px; flex-wrap: wrap; }
+.qh-tool { border: 1.5px solid var(--qh-line); background: var(--qh-card); color: var(--qh-ink); padding: 8px 16px; border-radius: 999px; font-weight: 700; font-size: 13px; cursor: pointer; }
+.qh-tool:hover { border-color: var(--qh-green); }
+.qh-tool[aria-pressed="true"] { background: var(--qh-green); border-color: var(--qh-green); color: #fff; }
+.qh-ayah { padding: 14px 0; border-bottom: 1px dashed var(--qh-line); }
+.qh-ayah:last-child { border-bottom: 0; }
+.qh-ayah-ar { font-family: "Amiri", "Scheherazade New", serif; font-size: calc(26px * var(--qh-arabic-scale, 1)); line-height: 2.1; margin: 0 0 6px; text-align: right; }
+.qh-ayah-mark { color: var(--qh-gold-deep); font-size: 0.85em; }
+.qh-ayah-tr { color: var(--qh-ink); font-size: 15.5px; margin: 0 0 2px; line-height: 1.65; }
+.qh-ayah-tl { color: var(--qh-muted); font-size: 13.5px; font-style: italic; margin: 0; }
+
+/* Mushaf reading mode (client toggle on data-mushaf of .qh-mushaf) */
+.qh-mushaf { background: var(--qh-card); border: 1px solid var(--qh-line); border-radius: 18px; padding: 26px clamp(16px, 4vw, 40px); }
+.qh-mushaf[data-mushaf="on"] { background: var(--qh-mushaf-paper); border-color: var(--qh-gold); box-shadow: 0 0 0 4px var(--qh-mushaf-frame); }
+.qh-mushaf[data-mushaf="on"] .qh-ayah { border-bottom: 0; padding: 6px 0; }
+.qh-mushaf[data-mushaf="on"] .qh-ayah-ar { font-size: calc(32px * var(--qh-arabic-scale, 1)); line-height: 2.35; text-align: justify; color: var(--qh-mushaf-ink); }
+.qh-mushaf[data-mushaf="on"] .qh-ayah-mark { color: var(--qh-mushaf-mark); }
+.qh-mushaf[data-mushaf="on"] .qh-ayah-tr, .qh-mushaf[data-mushaf="on"] .qh-ayah-tl { display: none; }
+</style>

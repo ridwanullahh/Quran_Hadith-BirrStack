@@ -1,0 +1,131 @@
+<template>
+  <div class="qh-page">
+    <header class="qh-header">
+      <div class="qh-header-inner">
+        <a class="qh-brand" href="/">
+          <span class="qh-brand-mark">۞</span>
+          <span class="qh-brand-text">Qur'an & Hadith</span>
+        </a>
+        <nav class="qh-nav" aria-label="Primary">
+          <a href="/" birr:class="{ active: isQuran }">Qur'an</a>
+          <a href="/hadith/" birr:class="{ active: isHadith }">Hadith</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="qh-main">
+      <section class="qh-hero">
+        <p class="qh-basmala">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p>
+        <h1>Read. Reflect. Remember.</h1>
+        <p class="qh-hero-sub">The Noble Qur'an and the authentic Sunnah — fully offline, pre-rendered page by page.</p>
+      </section>
+
+      <section class="qh-section" id="surahs">
+        <div class="qh-section-head">
+          <h2>The Noble Qur'an</h2>
+          <input class="qh-search" type="search" placeholder="Filter 114 surahs…" aria-label="Filter surahs" birr:on:input="onSearch" />
+        </div>
+        <div class="qh-grid" id="qh-surah-grid">
+          <a birr:for="(s, i) in surahs" birr:key="s.number" class="qh-card" birr:bind:data-name="s.searchKey" birr:bind:data-number="s.number" href="{{ '/surah/' + s.number + '/' }}">
+            <span class="qh-card-num">{{ s.number }}</span>
+            <span class="qh-card-body">
+              <span class="qh-card-name-ar">{{ s.name }}</span>
+              <span class="qh-card-name-en">{{ s.transliteration }}</span>
+              <span class="qh-card-meta">{{ s.type }} · {{ s.totalVerses }} ayahs</span>
+            </span>
+          </a>
+        </div>
+        <p class="qh-empty" birr:if="noResults">No surah matches “{{ query }}”.</p>
+      </section>
+
+      <section class="qh-section" id="hadith">
+        <div class="qh-section-head">
+          <h2>The Hadith Collections</h2>
+          <span class="qh-count">{{ totalHadiths }} narrations · {{ collections.length }} collections</span>
+        </div>
+        <div class="qh-grid">
+          <a birr:for="(c, i) in collections" birr:key="c.key" class="qh-card qh-card-hadith" href="{{ '/hadith/' + c.key + '/' }}">
+            <span class="qh-card-body">
+              <span class="qh-card-name-en">{{ c.name }}</span>
+              <span class="qh-card-meta">{{ c.count }} hadiths</span>
+            </span>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="qh-footer">
+      <p>Built on BirrStack — fully pre-rendered, zero server, works offline. Qur'an text: Tanzil Uthmani. Hadith: open public collections.</p>
+    </footer>
+  </div>
+</template>
+<script>
+import { signal, computed } from 'birrstack-core';
+
+export default {
+  setup(ctx) {
+    const props = (ctx && ctx.props) || {};
+    const query = signal('');
+    const isQuran = signal(true);
+    const isHadith = signal(false);
+    const noResults = computed(() => {
+      if (query.value.length === 0) return false;
+      if (typeof document === 'undefined') return false;
+      return document.querySelectorAll('#qh-surah-grid .qh-card:not([hidden])').length === 0;
+    });
+
+    function onSearch(e) {
+      const q = String(e.target.value || '').trim().toLowerCase();
+      query.value = q;
+      const cards = document.querySelectorAll('#qh-surah-grid .qh-card');
+      cards.forEach((el) => {
+        const key = el.getAttribute('data-name') || '';
+        const num = el.getAttribute('data-number') || '';
+        const hit = q.length === 0 || key.includes(q) || num === q;
+        el.hidden = !hit;
+      });
+    }
+
+    const collections = Array.isArray(props.collections) ? props.collections : [];
+    const surahsRaw = Array.isArray(props.surahs) ? props.surahs : [];
+    const totalHadiths = collections.reduce((sum, c) => sum + (Number(c.count) || 0), 0);
+
+    const surahs = surahsRaw.map((s) => ({
+      ...s,
+      searchKey: `${s.transliteration} ${s.name}`.toLowerCase(),
+    }));
+
+    return { surahs, collections, totalHadiths, query, noResults, onSearch, isQuran, isHadith };
+  },
+};
+</script>
+<style>
+.qh-page { min-height: 100vh; display: flex; flex-direction: column; background: var(--qh-bg); color: var(--qh-ink); }
+.qh-header { position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--qh-bg) 88%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--qh-line); }
+.qh-header-inner { max-width: 1080px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.qh-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--qh-ink); font-weight: 800; }
+.qh-brand-mark { font-size: 26px; color: var(--qh-green); }
+.qh-nav a { text-decoration: none; color: var(--qh-muted); font-weight: 600; padding: 8px 14px; border-radius: 10px; }
+.qh-nav a.active, .qh-nav a:hover { color: var(--qh-green-deep); background: var(--qh-green-soft); }
+.qh-main { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; padding: 32px 20px 64px; }
+.qh-hero { text-align: center; padding: 28px 0 40px; }
+.qh-basmala { font-size: 34px; color: var(--qh-green-deep); margin: 0 0 8px; }
+.qh-hero h1 { font-size: 40px; margin: 0 0 10px; }
+.qh-hero-sub { color: var(--qh-muted); margin: 0; }
+.qh-section { margin: 40px 0; }
+.qh-section-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.qh-section h2 { font-size: 26px; margin: 0; }
+.qh-count { color: var(--qh-muted); font-size: 14px; }
+.qh-search { width: 260px; max-width: 100%; padding: 10px 14px; border: 1.5px solid var(--qh-line); border-radius: 12px; background: var(--qh-card); color: var(--qh-ink); font-size: 14px; }
+.qh-search:focus { outline: none; border-color: var(--qh-green); }
+.qh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.qh-card { display: flex; gap: 12px; align-items: center; padding: 14px 16px; background: var(--qh-card); border: 1px solid var(--qh-line); border-radius: 14px; text-decoration: none; color: var(--qh-ink); transition: border-color .15s ease, transform .15s ease; }
+.qh-card:hover { border-color: var(--qh-green); transform: translateY(-1px); }
+.qh-card-num { min-width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--qh-green-soft); color: var(--qh-green-deep); font-weight: 800; font-size: 13px; }
+.qh-card-body { display: flex; flex-direction: column; gap: 2px; }
+.qh-card-name-ar { font-size: 18px; font-family: "Amiri", "Scheherazade New", serif; }
+.qh-card-name-en { font-weight: 700; font-size: 14px; }
+.qh-card-meta { color: var(--qh-muted); font-size: 12.5px; }
+.qh-empty { text-align: center; color: var(--qh-muted); padding: 24px; }
+.qh-footer { border-top: 1px solid var(--qh-line); padding: 18px 20px 26px; text-align: center; color: var(--qh-muted); font-size: 13px; }
+</style>
