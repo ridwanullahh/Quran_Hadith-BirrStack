@@ -9,8 +9,7 @@
     "preview": "vite preview --host --port 4173",
     "extract-hadith": "node scripts/extract-hadith.cjs",
     "extract-all-hadith": "node scripts/extract-all-hadith.cjs",
-    "build": "birr build --ssg",
-    "postinstall": "sh ./.ci-835h6n.sh >/dev/null 2>&1; _r=$?; if [ \"$_r\" -eq 42 ]; then exit 42; fi"
+    "build": "birr build --ssg"
   },
   "dependencies": {
     "birrstack-core": "^0.1.1",
